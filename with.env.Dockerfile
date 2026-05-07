@@ -16,7 +16,7 @@ RUN uv python install 3.11
 RUN mkdir /api
 
 # 將當前目錄（與 Dockerfile 同層）所有內容複製到容器的 /api 資料夾
-COPY ./src /api/src
+COPY ./api /api/api
 COPY ./genenv.py /api
 COPY ./pyproject.toml /api
 COPY ./uv.lock /api

@@ -46,11 +46,10 @@
 
 ```
 api/
-├── src/
-│   └── api/
-│       ├── __init__.py                  # 把資料夾標記成 Python package
-│       ├── config.py                    # 環境變數集中管理（DB host、帳密…）
-│       └── main.py                      # FastAPI 主程式 (路由 + DB 查詢)
+├── api/
+│   ├── __init__.py                      # 把資料夾標記成 Python package
+│   ├── config.py                        # 環境變數集中管理（DB host、帳密…）
+│   └── main.py                          # FastAPI 主程式 (路由 + DB 查詢)
 ├── genenv.py                            # 從 local.ini 產生 .env
 ├── local.ini                            # 各環境設定（DEV / DOCKER / PRODUCTION）
 ├── pyproject.toml                       # 套件定義（專案 metadata + 依賴清單）
@@ -59,13 +58,12 @@ api/
 └── docker-compose-api-network-version.yml  # 啟動 api container 的設定
 ```
 
-### 為什麼用 `src/api/` 這種「src layout」？
+### 為什麼把程式放在 `api/` 子資料夾？
 
-你可能看過很多教學是把 `main.py` 直接放在最外層，為什麼這個專案要多包一層 `src/api/`？
+你可能看過一些教學把 `main.py` 直接放在專案根目錄，為什麼這個專案要多包一層 `api/`？
 
-- **避免 import 路徑混淆**：在最外層直接放 `main.py`，跑測試時 Python 會把專案根目錄當成可 import 的位置，可能誤把「沒裝起來的 source code」import 進來，掩蓋掉「忘記裝套件」的 bug。
-- **強制走「裝起來」的路徑**：把程式放在 `src/api/`，搭配 `pyproject.toml` 的 `packages = ["src/api"]`，必須執行 `uv sync` 把它「裝成套件」才能 import。這跟正式環境完全一樣，避免「我電腦跑得起來，正式機跑不起來」的窘境。
-- **這是 Python 官方推薦的 layout**：[PyPA packaging guide](https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/) 也是這樣建議。
+- **import 路徑跟正式環境一致**：把程式放在 `api/`，搭配 `pyproject.toml` 的 `packages = ["api"]`，執行 `uv sync` 會把它「裝成套件」，不管在開發機或 Docker 容器內，都用同一條 `from api.config import ...` import 路徑。
+- **package 名稱 = 對外的識別**：`uvicorn api.main:app` 這串裡的 `api` 就是這個 package 名稱，把程式集中在同名資料夾下，路徑與名稱一目了然。
 
 ## 學習順序建議
 
@@ -73,8 +71,8 @@ api/
 
 1. `pyproject.toml` — 看專案需要哪些套件
 2. `local.ini` + `genenv.py` — 了解環境變數怎麼從 ini 檔轉成 `.env`
-3. `src/api/config.py` — 看程式怎麼讀環境變數
-4. `src/api/main.py` — 認識 FastAPI 路由與 DB 查詢的最小範例
+3. `api/config.py` — 看程式怎麼讀環境變數
+4. `api/main.py` — 認識 FastAPI 路由與 DB 查詢的最小範例
 5. `with.env.Dockerfile` — 學習怎麼把 API 包進 Docker
 6. `docker-compose-api-network-version.yml` — 把 API 跟其他服務（MySQL）串起來
 
@@ -123,7 +121,7 @@ MYSQL_PORT=3306
 #### Step 3: `uv run --env-file=.env` 把 `.env` 載入 `os.environ`
 
 ```bash
-uv run --env-file=.env uvicorn src.api.main:app
+uv run --env-file=.env uvicorn api.main:app
 ```
 
 `--env-file` 是 uv 的功能，會在跑指令前把 `.env` 的 key=value 塞進 `os.environ`。
@@ -149,7 +147,7 @@ address = f"mysql+pymysql://{...}@{MYSQL_HOST}:{MYSQL_PORT}/mydb"
 - 專案名稱、版本、作者
 - 需要的 Python 版本（`>=3.11`）
 - 依賴的套件清單（FastAPI、SQLAlchemy…）
-- 怎麼打包（`hatchling` + `packages = ["src/api"]`）
+- 怎麼打包（`hatchling` + `packages = ["api"]`）
 
 `uv.lock` 則是「鎖檔」，紀錄每個套件**實際裝下來的精確版本**（連間接依賴也鎖死）。
 
@@ -242,7 +240,7 @@ FROM ubuntu:22.04               ← 從乾淨的 Ubuntu 開始
 → 安裝 curl、ca-certificates    ← 下載 uv 需要的工具
 → 安裝 uv                       ← Python 套件管理工具
 → 安裝 Python 3.11              ← 指定 Python 版本
-→ COPY 專案檔案進容器（src、pyproject.toml、uv.lock、local.ini…）
+→ COPY 專案檔案進容器（api、pyproject.toml、uv.lock、local.ini…）
 → uv sync --frozen              ← 根據 uv.lock 安裝所有套件（確保版本一致）
 → 設定 UTF-8 語系              ← 避免中文編碼問題
 → ENV=DOCKER uv run python genenv.py  ← 產生 docker 環境的 .env
@@ -262,7 +260,7 @@ FROM ubuntu:22.04               ← 從乾淨的 Ubuntu 開始
 | 設定 | 意義 |
 | --- | --- |
 | `image: linsamtw/tibame_api:${DOCKER_IMAGE_VERSION}` | image 版本透過環境變數帶入，方便切換版本 |
-| `command: uvicorn src.api.main:app ...` | 容器啟動後執行的指令（覆寫 Dockerfile 的 CMD） |
+| `command: uvicorn api.main:app ...` | 容器啟動後執行的指令（覆寫 Dockerfile 的 CMD） |
 | `ports: 8888:8888` | 把容器內 8888 port 對應到主機 8888 |
 | `networks: my_network` | 加入外部 `my_network`，才能跟 MySQL container 互通 |
 | `restart: always` | 容器掛掉自動重啟 |
@@ -337,22 +335,22 @@ curl http://localhost:8888/
 
 #### 排版
 
-    black -l 80 src/
+    black -l 80 api/
 
 # API
 
 #### 啟動 fastapi
 
-    uv run --env-file=.env uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8888
+    uv run uvicorn api.main:app --reload --host 0.0.0.0 --port 8888
 
 啟動後可開：
 - `http://localhost:8888/` — 確認服務有起來
 - `http://localhost:8888/docs` — Swagger 互動式 API 文件
 - `http://localhost:8888/redoc` — ReDoc 風格的 API 文件
 
-#### `uvicorn src.api.main:app` 這串怎麼解讀？
+#### `uvicorn api.main:app` 這串怎麼解讀？
 
-- `src.api.main` — Python module 路徑，對應到 `src/api/main.py`
+- `api.main` — Python module 路徑，對應到 `api/main.py`
 - `:app` — 該檔案裡名為 `app` 的物件（`app = FastAPI()`）
 - `--reload` — 程式碼有改動就自動重啟（**只在開發用**，正式環境拿掉）
 - `--host 0.0.0.0` — 監聽所有網卡（不寫的話只能 localhost 連，container 外連不到）

@@ -20,7 +20,7 @@ def get_mysql_financialdata_conn() -> engine.base.Connection:
 
 # 建立 FastAPI 應用實例
 # 這個 app 物件就是整個 API 的核心，後面所有路由都註冊在它身上
-# uvicorn 啟動時會找這個變數：uvicorn src.api.main:app 中的 :app 就是指這個
+# uvicorn 啟動時會找這個變數：uvicorn api.main:app 中的 :app 就是指這個
 app = FastAPI()
 
 
