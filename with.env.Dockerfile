@@ -20,6 +20,8 @@ COPY ./api /api/api
 COPY ./pyproject.toml /api
 COPY ./uv.lock /api
 COPY ./README.md /api
+COPY ./genenv.py /api
+COPY ./local.ini /api
 
 # # 設定容器的工作目錄為 /api，後續的指令都在這個目錄下執行
 WORKDIR /api/
@@ -31,5 +33,11 @@ RUN uv sync --frozen
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-# # 啟動 API，環境變數由 Docker/GCP 在容器啟動時注入
-CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8888"]
+# # # 啟動 API，環境變數由 Docker/GCP 在容器啟動時注入
+# CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8888"]
+
+# # 建立 .env
+RUN ENV=DOCKER uv run python genenv.py
+
+# # 啟動容器後，預設執行 bash（開啟終端）
+CMD ["/bin/bash"]
